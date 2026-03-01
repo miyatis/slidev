@@ -8,6 +8,15 @@ importers:
 
   .: {}
 
+  presentations/ruby-compile:
+    dependencies:
+      '@slidev/cli':
+        specifier: latest
+        version: 52.13.0(@nuxt/kit@3.21.1)(@types/markdown-it@14.1.2)(@types/node@22.19.13)(@vue/compiler-sfc@3.5.29)(markdown-it@14.1.1)(postcss@8.5.6)
+      '@slidev/theme-seriph':
+        specifier: latest
+        version: 0.25.0
+
   presentations/sample:
     dependencies:
       '@slidev/cli':
