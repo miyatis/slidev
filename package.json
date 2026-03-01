@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "scripts": {
+    "new": "echo 'Usage: create a new directory under presentations/ and run pnpm init inside it'"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

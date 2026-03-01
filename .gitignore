@@ -1,0 +1,4 @@
+node_modules/
+dist/
+.slidev/
+firebase-debug.log
