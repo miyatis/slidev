@@ -34,7 +34,7 @@ flowchart LR
     A["Rubyコード"] --> B(["字句解析"])
     B --> C(["構文解析"])
     C --> D(["コンパイル"])
-    D --> E["YARV命令"]
+    D --> E["YARV命令列"]
     style D fill:#e74c3c,stroke:#c0392b,color:#fff,stroke-width:3px
 ```
 
@@ -59,36 +59,33 @@ flowchart LR
 
 なぜ「コンパイル」が必要になったのか
 
-<div class="grid grid-cols-2 gap-8 mt-4">
+<div class="grid grid-cols-1 gap-4 mt-4">
 <div>
 
-### Ruby 1.8（MRI）
+### Ruby 1.8
 
 - AST を直接たどって実行
 - ノードを再帰的にたどる **ツリーウォーク型** インタプリタ
-- シンプルだが遅い
 
 ```mermaid {scale: 0.7}
-flowchart TD
-    A["AST"] --> B["ノード評価"]
-    B --> C["再帰的に子ノードを評価"]
-    C --> B
+flowchart LR
+    A["Rubyコード"] --> B["トークン列"] --> C["AST"] -->|解釈| D["C"] --> E["機械語"]
 ```
 
 </div>
 <div>
 
-### Ruby 1.9+（YARV）
+### Ruby 1.9+
 
-- AST → **YARV 命令列** にコンパイル
-- 命令列を **スタックベース VM** で実行
-- 笹田耕一氏が開発した YARV を採用
+- AST → **YARV 命令列**というバイトコード (中間表現) にコンパイル
+- 命令列を スタックベースの仮想マシン (VM) で実行
+- Ruby 1.8よりも高速
+  - 理由は [Bootcamp2025の土方さんのスライド](https://github.com/Nozomi-Hijikata/slides/blob/main/rubykaigi-bootcamp-2025/pages/ruby-process.md#layout-default-24) を参照
 
 ```mermaid {scale: 0.7}
-flowchart TD
-    A["AST"] --> B["コンパイル"]
-    B --> C["YARV 命令列"]
-    C --> D["VM で実行"]
+flowchart LR
+    A["Rubyコード"] --> B["トークン列"] --> C["AST"] --> D["YARV命令列"] -->|解釈| F["C"] --> G["機械語"]
+    style D fill:#e74c3c,stroke:#c0392b,color:#fff,stroke-width:3px
 ```
 
 </div>
