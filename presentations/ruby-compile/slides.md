@@ -38,8 +38,6 @@ flowchart LR
     style D fill:#e74c3c,stroke:#c0392b,color:#fff,stroke-width:3px
 ```
 
-<br>
-
 <v-click>
 
 今回のフォーカスは **コンパイル** ── AST を YARV 命令列に変換するステップ
@@ -59,15 +57,18 @@ flowchart LR
 
 なぜ「コンパイル」が必要になったのか
 
-<div class="grid grid-cols-1 gap-4 mt-4">
+<div class="grid grid-cols-1 gap-1 mt-1">
 <div>
 
 ### Ruby 1.8
 
-- AST を直接たどって実行
-- ノードを再帰的にたどる **ツリーウォーク型** インタプリタ
+<div class="text-sm">
 
-```mermaid {scale: 0.7}
+- AST を直接たどって実行（**ツリーウォーク型** インタプリタ）
+
+</div>
+
+```mermaid {scale: 0.5}
 flowchart LR
     A["Rubyコード"] --> B["トークン列"] --> C["AST"] -->|解釈| D["C"] --> E["機械語"]
 ```
@@ -77,12 +78,13 @@ flowchart LR
 
 ### Ruby 1.9+
 
-- AST → **YARV 命令列**というバイトコード (中間表現) にコンパイル
-- 命令列を スタックベースの仮想マシン (VM) で実行
-- Ruby 1.8よりも高速
-  - 理由は [Bootcamp2025の土方さんのスライド](https://github.com/Nozomi-Hijikata/slides/blob/main/rubykaigi-bootcamp-2025/pages/ruby-process.md#layout-default-24) を参照
+<div class="text-sm">
 
-```mermaid {scale: 0.7}
+- AST → **YARV 命令列**（中間表現）にコンパイルし、スタックベース VM で実行。Ruby 1.8 より高速（[詳細](https://github.com/Nozomi-Hijikata/slides/blob/top/rubykaigi-bootcamp-2025/pages/ruby-process.md#layout-default-24)）
+
+</div>
+
+```mermaid {scale: 0.5}
 flowchart LR
     A["Rubyコード"] --> B["トークン列"] --> C["AST"] --> D["YARV命令列"] -->|解釈| F["C"] --> G["機械語"]
     style D fill:#e74c3c,stroke:#c0392b,color:#fff,stroke-width:3px
@@ -100,8 +102,6 @@ flowchart LR
 ```ruby
 puts 2 + 2
 ```
-
-<br>
 
 <v-click>
 
@@ -122,37 +122,48 @@ RubyVM::InstructionSequence.compile("puts 2 + 2").disasm
 </v-click>
 
 ---
+layout: two-cols
+---
 
 # AST の構造
 
 `puts 2 + 2` がどんな木になるか
 
-```mermaid {scale: 0.9}
+```mermaid {scale: 0.8}
 graph TD
-    A["SCOPE"] --> B["FCALL :puts"]
-    B --> C["OPCALL :+"]
-    C --> D["LIT 2"]
-    C --> E["LIT 2"]
+    A["NODE_SCOPE"] --> B["NODE_FCALL :puts"]
+    B --> C["NODE_CALL :+"]
+    C --> D["NODE_LIT 2"]
+    C --> E["NODE_LIT 2"]
 ```
 
 <v-click>
 
-- **SCOPE** — プログラム全体を囲むスコープ
-- **FCALL** — 関数的メソッド呼び出し（`puts`、レシーバ省略）
-- **OPCALL** — 演算子メソッド呼び出し（`+`）
-- **LIT** — リテラル値（整数 `2`）
 
 </v-click>
 
-<v-click>
+::right::
 
-コンパイラはこの木を **再帰的に深さ優先** でたどり、各ノードに対応する YARV 命令を生成する。
+<v-click at="0">
+
+<div class="mt-12">
+
+| **ノード** | **意味** |
+|:---:|:---:|
+| **NODE_SCOPE** | プログラム全体を囲むスコープ |
+| **NODE_FCALL** | 関数的メソッド呼び出し（`puts`、レシーバ省略）|
+| **NODE_OPCALL** | 演算子メソッド呼び出し（`+`）|
+| **NODE_LIT** | リテラル値（整数 `2`）|
+
+コンパイラはこの木を再帰的にたどり、各ノードに対応する YARV 命令を生成する。
+
+</div>
 
 </v-click>
 
 ---
 layout: two-cols
-layoutClass: gap-8
+layoutClass: gap-4
 ---
 
 # YARV命令列
@@ -172,7 +183,7 @@ leave
 
 | 命令 | 意味 |
 |------|------|
-| `putself` | レシーバ（main）をスタックに積む |
+| `putself` | レシーバ（top）をスタックに積む |
 | `putobject 2` | 整数 2 をスタックに積む |
 | `opt_plus` | スタックから2つ取り出し加算 |
 | `opt_send_without_block` | メソッド呼び出し |
@@ -198,43 +209,32 @@ leave
 0009 leave
 ```
 
-<v-click at="1">
-
-<div class="text-sm mt-4 opacity-80">
-
-- `[Li]` — 行番号の境界
-- `calldata!mid:` — メソッド名と引数情報
-- `FCALL` — 関数的呼び出しフラグ
-
-</div>
-</v-click>
-
 ---
 
 # スタックの動き
 
 各命令でスタックがどう変化するか
 
-```mermaid {scale: 0.75}
+```mermaid {scale: 0.6}
 sequenceDiagram
     participant S as スタック
     Note over S: [] 空
-    Note over S: putself → [main]
-    Note over S: putobject 2 → [main, 2]
-    Note over S: putobject 2 → [main, 2, 2]
-    Note over S: opt_plus → [main, 4]
+    Note over S: putself → [top]
+    Note over S: putobject 2 → [top, 2]
+    Note over S: putobject 2 → [top, 2, 2]
+    Note over S: opt_plus → [top, 4]
     Note over S: opt_send_without_block → [nil]
     Note over S: leave → 戻り値: nil
 ```
 
 <v-click>
 
-<div class="grid grid-cols-6 gap-2 mt-6 text-center text-sm">
+<div class="grid grid-cols-6 gap-1 mt-2 text-center text-xs">
 
 <div>
 
 **初期**
-<div class="border p-2 bg-gray-100 dark:bg-gray-800 rounded">
+<div class="border p-1 bg-gray-100 dark:bg-gray-800 rounded">
 
 (空)
 
@@ -244,9 +244,9 @@ sequenceDiagram
 <div>
 
 **putself**
-<div class="border p-2 bg-blue-100 dark:bg-blue-900 rounded">
+<div class="border p-1 bg-blue-100 dark:bg-blue-900 rounded">
 
-main
+top
 
 </div>
 </div>
@@ -254,9 +254,9 @@ main
 <div>
 
 **putobj 2**
-<div class="border p-2 bg-blue-100 dark:bg-blue-900 rounded">
+<div class="border p-1 bg-blue-100 dark:bg-blue-900 rounded">
 
-main
+top
 2
 
 </div>
@@ -265,9 +265,9 @@ main
 <div>
 
 **putobj 2**
-<div class="border p-2 bg-blue-100 dark:bg-blue-900 rounded">
+<div class="border p-1 bg-blue-100 dark:bg-blue-900 rounded">
 
-main
+top
 2 | 2
 
 </div>
@@ -276,9 +276,9 @@ main
 <div>
 
 **opt_plus**
-<div class="border p-2 bg-green-100 dark:bg-green-900 rounded">
+<div class="border p-1 bg-green-100 dark:bg-green-900 rounded">
 
-main
+top
 4
 
 </div>
@@ -287,70 +287,12 @@ main
 <div>
 
 **send**
-<div class="border p-2 bg-yellow-100 dark:bg-yellow-900 rounded">
+<div class="border p-1 bg-yellow-100 dark:bg-yellow-900 rounded">
 
 nil
 
 </div>
 </div>
-
-</div>
-
-</v-click>
-
----
-
-# opt_plus とは
-
-YARV の最適化命令（Specialized Instruction）
-
-<div class="grid grid-cols-2 gap-8 mt-4">
-<div>
-
-### 通常の場合
-
-```txt
-opt_send_without_block :+
-```
-
-- 通常のメソッド探索を行う
-- メソッドテーブルを検索
-- オーバーヘッドが大きい
-
-</div>
-<div>
-
-### 最適化された場合
-
-```txt
-opt_plus
-```
-
-- **Integer#+ を直接呼び出す**
-- メソッド探索をスキップ
-- C レベルの加算に最適化
-
-</div>
-</div>
-
-<v-click>
-
-<br>
-
-### 他の最適化命令
-
-| 命令 | 対応する演算 |
-|------|-------------|
-| `opt_minus` | `-` |
-| `opt_mult` | `*` |
-| `opt_eq` | `==` |
-| `opt_lt` / `opt_gt` | `<` / `>` |
-| `opt_length` | `.length` |
-| `opt_empty_p` | `.empty?` |
-
-<div class="text-sm opacity-80 mt-2">
-
-※ `+` が再定義されている場合は通常のメソッド呼び出しにフォールバックする
 
 </div>
 
@@ -368,8 +310,6 @@ opt_plus
 end
 ```
 
-<br>
-
 <v-click>
 
 ブロックがある場合、コンパイル結果はどう変わるか？
@@ -380,7 +320,7 @@ end
 
 ---
 layout: two-cols
-layoutClass: gap-8
+layoutClass: gap-4
 ---
 
 # メインの命令列
@@ -395,14 +335,15 @@ leave
 
 <v-click at="1">
 
+<div class="text-sm">
+
 - `putobject 10` — レシーバ 10 をスタックに積む
-- `send :times` — `times` メソッドを呼び出し
-  - **ブロックへの参照** を一緒に渡す
+- `send :times` — `times` メソッドを呼び出し（**ブロックへの参照** を一緒に渡す）
 - `leave` — 終了
 
-</v-click>
+</div>
 
-<br>
+</v-click>
 
 <v-click at="1">
 
@@ -436,13 +377,15 @@ leave
 
 <v-click at="1">
 
+<div class="text-sm">
+
 - ブロック引数 `n` はローカルテーブルに格納
 - `getlocal_WC_0` でインデックス指定で取得
 - `WC_0` = "ワイルドカード 0" = 現在のスコープ
 
-</v-click>
+</div>
 
-<br>
+</v-click>
 
 <v-click at="1">
 
@@ -469,7 +412,7 @@ local table (size: 1, argc: 1)
 
 2つの InstructionSequence の親子関係
 
-```mermaid {scale: 0.85}
+```mermaid {scale: 0.7}
 graph TD
     A["ISeq: &lt;compiled&gt;<br>(メインの命令列)"] --> B["ISeq: block in &lt;compiled&gt;<br>(ブロックの命令列)"]
 
@@ -486,7 +429,7 @@ graph TD
 
 <v-click>
 
-<div class="grid grid-cols-2 gap-8 mt-4">
+<div class="grid grid-cols-2 gap-4 mt-2 text-sm">
 <div>
 
 ### 親（メイン）
@@ -499,10 +442,8 @@ graph TD
 
 ### 子（ブロック）
 - 独自のローカルテーブルを持つ
-- 親のスコープの変数にもアクセス可能
-  - （`getlocal_WC_1` で1つ上のスコープ）
-- `[Bc]` フラグ = ブロック開始
-- `[Br]` フラグ = ブロック終了
+- 親のスコープの変数にもアクセス可能（`getlocal_WC_1` で1つ上のスコープ）
+- `[Bc]` フラグ = ブロック開始 / `[Br]` = 終了
 
 </div>
 </div>
@@ -515,7 +456,7 @@ graph TD
 
 変数名 → インデックスの変換
 
-<div class="grid grid-cols-2 gap-8 mt-4">
+<div class="grid grid-cols-2 gap-4 mt-2">
 <div>
 
 ### コンパイル時
@@ -550,7 +491,7 @@ getlocal_WC_0  b@1    # ... = b
 
 <v-click>
 
-<div class="text-sm mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded">
+<div class="text-sm mt-2 p-2 bg-blue-50 dark:bg-blue-950 rounded">
 
 **なぜ高速か:** 変数はスタックフレーム上の配列に格納されるため、インデックスで `O(1)` アクセスできる。名前での検索は `O(n)` 。
 
@@ -570,7 +511,7 @@ getlocal_WC_0  b@1    # ... = b
 a = 1; b = 2; c = a + b; puts c
 ```
 
-```txt {all|1-3|4-5|6-7|8-11|12-14}{maxHeight:'340px'}
+```txt {all|1-3|4-5|6-7|8-11|12-14}{maxHeight:'300px'}
 == disasm: #<ISeq:<compiled>@<compiled>:1 (1,0)-(4,6)>
 local table (size: 3, argc: 0)
 [ 3] a@0        [ 2] b@1        [ 1] c@2
@@ -594,8 +535,12 @@ local table (size: 3, argc: 0)
 
 <v-click>
 
+<div class="text-sm">
+
 - `putobject_INT2FIX_1_` — 整数 `1` の特殊最適化命令（`putobject 1` より高速）
 - ローカルテーブルの `[ 3] a@0` — スロット番号3、変数名 `a`、インデックス `0`
+
+</div>
 
 </v-click>
 
@@ -606,7 +551,7 @@ class: text-center
 
 # まとめ
 
-<div class="text-left inline-block">
+<div class="text-left inline-block text-sm leading-snug">
 
 ### Ruby のコンパイルで押さえるべきポイント
 
@@ -645,8 +590,6 @@ class: text-center
 - 笹田耕一「YARV: Yet Another RubyVM」
 
 </div>
-
-<br>
 
 <div class="text-sm opacity-60">
 

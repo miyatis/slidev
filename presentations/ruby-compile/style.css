@@ -1,0 +1,5 @@
+/* mermaid 図の上下マージンを縮小してスライド内の縦スペースを節約 */
+.mermaid {
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+}
