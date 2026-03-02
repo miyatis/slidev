@@ -170,6 +170,85 @@ layout: two-cols
 layoutClass: gap-4
 ---
 
+# ASTノード → YARV命令 の変換
+
+<span class="node-fcall">NODE_FCALL</span> / <span class="node-call">NODE_CALL</span> / <span class="node-lit">NODE_LIT</span> を再帰的にたどる
+
+```mermaid {scale: 0.65}
+graph TD
+    A["NODE_FCALL :puts"]
+    A --> B["NODE_CALL :+"]
+    B --> C["NODE_LIT 2"]
+    B --> D["NODE_LIT 2"]
+    style A fill:#e74c3c,stroke:#c0392b,color:#fff
+    style B fill:#27ae60,stroke:#1e8449,color:#fff
+    style C fill:#2980b9,stroke:#1f618d,color:#fff
+    style D fill:#2980b9,stroke:#1f618d,color:#fff
+```
+
+::right::
+
+<div class="mt-8 text-sm">
+
+### 生成される命令列
+
+<v-click>
+
+**①** <span class="node-fcall">NODE_FCALL :puts</span> → レシーバが必要
+
+```
+putself
+```
+
+</v-click>
+
+<v-click>
+
+**②** <span class="node-call">NODE_CALL :+</span> に再帰 → レシーバ→引数→メソッドの順
+
+</v-click>
+
+<v-click>
+
+- <span class="node-lit">NODE_LIT 2</span>（レシーバ）→ `putobject 2`
+- <span class="node-lit">NODE_LIT 2</span>（引数）→ `putobject 2`
+- メソッド `:+` → `opt_plus`
+
+</v-click>
+
+<v-click>
+
+**③** <span class="node-fcall">NODE_FCALL :puts</span> に戻る
+
+```
+opt_send_without_block :puts
+```
+
+</v-click>
+
+<v-click>
+
+**④** 完了 → `leave`
+
+</v-click>
+
+</div>
+
+<v-click>
+
+<div class="text-xs mt-2 p-2 bg-amber-50 dark:bg-amber-950 rounded">
+
+**ポイント:** NODE_CALL ではレシーバ → 引数 → メソッドの順にスタックへプッシュする
+
+</div>
+
+</v-click>
+
+---
+layout: two-cols
+layoutClass: gap-4
+---
+
 # YARV命令列
 
 `puts 2 + 2` のコンパイル結果
@@ -215,95 +294,6 @@ leave
 
 ---
 
-# スタックの動き
-
-各命令でスタックがどう変化するか
-
-```mermaid {scale: 0.6}
-sequenceDiagram
-    participant S as スタック
-    Note over S: [] 空
-    Note over S: putself → [top]
-    Note over S: putobject 2 → [top, 2]
-    Note over S: putobject 2 → [top, 2, 2]
-    Note over S: opt_plus → [top, 4]
-    Note over S: opt_send_without_block → [nil]
-    Note over S: leave → 戻り値: nil
-```
-
-<v-click>
-
-<div class="grid grid-cols-6 gap-1 mt-2 text-center text-xs">
-
-<div>
-
-**初期**
-<div class="border p-1 bg-gray-100 dark:bg-gray-800 rounded">
-
-(空)
-
-</div>
-</div>
-
-<div>
-
-**putself**
-<div class="border p-1 bg-blue-100 dark:bg-blue-900 rounded">
-
-top
-
-</div>
-</div>
-
-<div>
-
-**putobj 2**
-<div class="border p-1 bg-blue-100 dark:bg-blue-900 rounded">
-
-top
-2
-
-</div>
-</div>
-
-<div>
-
-**putobj 2**
-<div class="border p-1 bg-blue-100 dark:bg-blue-900 rounded">
-
-top
-2 | 2
-
-</div>
-</div>
-
-<div>
-
-**opt_plus**
-<div class="border p-1 bg-green-100 dark:bg-green-900 rounded">
-
-top
-4
-
-</div>
-</div>
-
-<div>
-
-**send**
-<div class="border p-1 bg-yellow-100 dark:bg-yellow-900 rounded">
-
-nil
-
-</div>
-</div>
-
-</div>
-
-</v-click>
-
----
-
 # ブロック付き呼び出し
 
 次はブロックを含むコードを見てみよう
@@ -319,6 +309,93 @@ end
 ブロックがある場合、コンパイル結果はどう変わるか？
 
 **ポイント:** メインの命令列とブロックの命令列は **別々に** コンパイルされる。
+
+</v-click>
+
+---
+layout: two-cols
+layoutClass: gap-4
+---
+
+# ブロック付き AST → YARV変換
+
+<span class="node-iter">NODE_ITER</span> が2つの <span class="node-scope">NODE_SCOPE</span> を分離する
+
+```mermaid {scale: 0.55}
+graph TD
+    subgraph ISeq1["ISeq: &lt;compiled&gt;"]
+        S1["NODE_SCOPE"]
+        S1 --> A["NODE_ITER"]
+        A --> B["NODE_CALL :times"]
+        B --> C["NODE_LIT 10"]
+    end
+    subgraph ISeq2["ISeq: block in &lt;compiled&gt;"]
+        A --> S2["NODE_SCOPE"]
+        S2 --> D["NODE_FCALL :puts"]
+        D --> E["NODE_DVAR :n"]
+    end
+    style S1 fill:#8e44ad,stroke:#6c3483,color:#fff
+    style A fill:#e67e22,stroke:#d35400,color:#fff
+    style B fill:#27ae60,stroke:#1e8449,color:#fff
+    style C fill:#2980b9,stroke:#1f618d,color:#fff
+    style S2 fill:#8e44ad,stroke:#6c3483,color:#fff
+    style D fill:#e74c3c,stroke:#c0392b,color:#fff
+    style E fill:#16a085,stroke:#117a65,color:#fff
+    style ISeq1 fill:none,stroke:#8e44ad,stroke-dasharray: 5 5
+    style ISeq2 fill:none,stroke:#8e44ad,stroke-dasharray: 5 5
+```
+
+::right::
+
+<div class="mt-4 text-sm">
+
+### 変換ステップ
+
+<v-click>
+
+**①** <span class="node-scope">NODE_SCOPE</span>（メイン）→ ISeq `<compiled>` を生成
+
+</v-click>
+
+<v-click>
+
+**②** <span class="node-lit">NODE_LIT 10</span>（レシーバ）→ `putobject 10`
+
+</v-click>
+
+<v-click>
+
+**③** <span class="node-iter">NODE_ITER</span> → ブロック内の <span class="node-scope">NODE_SCOPE</span> を**別ISeq**として分離コンパイル
+
+</v-click>
+
+<v-click>
+
+**④** [ブロックISeq]
+- <span class="node-fcall">NODE_FCALL :puts</span> → `putself`
+- <span class="node-dvar">NODE_DVAR :n</span> → `getlocal_WC_0`
+- `:puts` → `opt_send_without_block`
+- `leave`
+
+</v-click>
+
+<v-click>
+
+**⑤** [メインISeqに戻る]
+- `send :times, block in <compiled>`
+- `leave` → メインISeq完成
+
+</v-click>
+
+</div>
+
+<v-click>
+
+<div class="text-xs mt-2 p-2 bg-amber-50 dark:bg-amber-950 rounded">
+
+**ポイント:** 各 <span class="node-scope">NODE_SCOPE</span> が独立した InstructionSequence を生成する — メイン用とブロック用で別々にコンパイルされる
+
+</div>
 
 </v-click>
 
@@ -456,93 +533,134 @@ graph TD
 
 ---
 
-# ローカルテーブルとは
+# ローカルテーブル例① ブロック呼び出し
 
-変数名 → インデックスの変換
+```ruby
+10.times do |n| puts n end
+```
 
 <div class="grid grid-cols-2 gap-4 mt-2">
 <div>
 
-### コンパイル時
-- 変数名をインデックス番号に変換
-- ローカルテーブルに登録
+#### YARV 命令列（ブロックの ISeq）
 
-```ruby
-a = 1    # → index 0
-b = 2    # → index 1
-c = a + b  # → index 2
+```txt
+== disasm: #<ISeq:block in <compiled>@<compiled>:1>
+0000 putself                          [LiBc]
+0001 getlocal_WC_0          n@0
+0003 opt_send_without_block  :puts
+0005 leave                            [Br]
 ```
-
-| インデックス | 変数名 |
-|:---:|:---:|
-| 0 | `a` |
-| 1 | `b` |
-| 2 | `c` |
 
 </div>
 <div>
 
-### 実行時
-- **名前ではなくインデックス** でアクセス
-- 名前解決が不要 → 高速
+#### ローカルテーブル
 
 ```txt
-setlocal_WC_0  a@0    # a = ...
-setlocal_WC_0  b@1    # b = ...
-getlocal_WC_0  a@0    # ... = a
-getlocal_WC_0  b@1    # ... = b
+local table (size: 1, argc: 1
+ [opts: 0, rest: -1, post: 0, block: -1])
+[ 1] n@0<Arg>
 ```
 
-<v-click>
+<div class="text-sm mt-2">
 
-<div class="text-sm mt-2 p-2 bg-blue-50 dark:bg-blue-950 rounded">
-
-**なぜ高速か:** 変数はスタックフレーム上の配列に格納されるため、インデックスで `O(1)` アクセスできる。名前での検索は `O(n)` 。
+- `size: 1` → 変数は `n` の1つ
+- `argc: 1` → ブロック引数1つ
 
 </div>
-</v-click>
 
 </div>
 </div>
 
 ---
 
-# ローカルテーブルのデモ
-
-実際の disasm 出力を見てみよう
+# ローカルテーブル例② 関数定義
 
 ```ruby
-a = 1; b = 2; c = a + b; puts c
+def add_two(a, b)
+  sum = a + b
+end
 ```
 
-```txt {all|1-3|4-5|6-7|8-11|12-14}{maxHeight:'300px'}
-== disasm: #<ISeq:<compiled>@<compiled>:1 (1,0)-(4,6)>
-local table (size: 3, argc: 0)
-[ 3] a@0        [ 2] b@1        [ 1] c@2
+<div class="grid grid-cols-2 gap-4 mt-2">
+<div>
 
-0000 putobject_INT2FIX_1_                   (   1)[Li]  # a = 1
-0001 setlocal_WC_0               a@0
+#### YARV 命令列
 
-0003 putobject                   2          (   2)[Li]  # b = 2
-0005 setlocal_WC_0               b@1
-
-0007 getlocal_WC_0               a@0        (   3)[Li]  # c = a + b
-0009 getlocal_WC_0               b@1
-0011 opt_plus
-0013 setlocal_WC_0               c@2
-
-0015 putself                                (   4)[Li]  # puts c
-0016 getlocal_WC_0               c@2
-0018 opt_send_without_block       :puts
-0020 leave
+```txt
+== disasm: #<ISeq:add_two@<compiled>:1>
+0000 getlocal_WC_0          a@0       [Li]
+0002 getlocal_WC_0          b@1
+0004 opt_plus
+0006 dup
+0007 setlocal_WC_0          sum@2
+0009 leave
 ```
+
+</div>
+<div>
+
+#### ローカルテーブル
+
+```txt
+local table (size: 3, argc: 2
+ [opts: 0, rest: -1, post: 0, block: -1])
+[ 3] a@0<Arg>  [ 2] b@1<Arg>  [ 1] sum@2
+```
+
+<div class="text-sm mt-2">
+
+- `size: 3` → `a`, `b`, `sum` の3つ
+- `argc: 2` → メソッド引数2つ（`sum` はローカル変数なので argc に含まれない）
+
+</div>
+
+</div>
+</div>
+
+---
+
+# ローカルテーブルのフィールド
+
+ローカルテーブルヘッダーの各フィールドの意味
+
+```txt
+local table (size: 3, argc: 2 [opts: 0, rest: -1, post: 0, block: -1, kw: ...])
+```
+
+| フィールド | 意味 | 値の読み方 |
+|---|---|---|
+| **size** | ローカル変数の総数 | `3` → 変数3つ |
+| **argc** | 必須引数の数 | `2` → 引数2つ |
+| **opts** | オプション引数の数 | `0` = なし, `1` = 1つ |
+| **rest** | 可変長引数(`*args`)のインデックス | `-1` = なし |
+| **post** | rest後の必須引数の数 | `0` = なし |
+| **block** | ブロック引数(`&blk`)のインデックス | `-1` = なし |
 
 <v-click>
 
-<div class="text-sm">
+<div class="text-sm mt-4">
 
-- `putobject_INT2FIX_1_` — 整数 `1` の特殊最適化命令（`putobject 1` より高速）
-- ローカルテーブルの `[ 3] a@0` — スロット番号3、変数名 `a`、インデックス `0`
+**引数の種別タグ:**
+`<Arg>` — 必須引数 / `<Opt=0>` — オプション引数（デフォルト値命令のラベル番号） / `<Rest>`, `<Post>`, `<Block>` — それぞれ対応する種別
+
+</div>
+
+</v-click>
+
+<v-click>
+
+<div class="text-sm mt-2 p-2 bg-blue-50 dark:bg-blue-950 rounded">
+
+**実例:** `def greet(name, greeting="Hello")` の場合
+
+```txt
+local table (size: 2, argc: 1 [opts: 1, rest: -1, post: 0, block: -1])
+[ 2] name@0<Arg>  [ 1] greeting@1<Opt=0>
+```
+
+`opts: 1` により `greeting` がオプション引数であることが分かる
 
 </div>
 
