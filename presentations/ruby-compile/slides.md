@@ -621,6 +621,153 @@ local table (size: 3, argc: 2
 
 ---
 
+# ローカルテーブル例③ 名前なし引数配列（splat）
+
+```ruby
+def complex_formula(a, b, *args, c)
+  a + b + args.size + c
+end
+```
+
+<div class="grid grid-cols-2 gap-4 mt-2">
+<div>
+
+#### YARV 命令列
+
+```txt
+== disasm: #<ISeq:complex_formula@<compiled>:1>
+0000 getlocal_WC_0          a@0       [LiCa]
+0002 getlocal_WC_0          b@1
+0004 opt_plus
+0006 getlocal_WC_0          args@2
+0008 opt_size
+0010 opt_plus
+0012 getlocal_WC_0          c@3
+0014 opt_plus
+0016 leave
+```
+
+</div>
+<div>
+
+#### ローカルテーブル
+
+```txt
+local table (size: 4, argc: 2
+ [opts: 0, rest: 2, post: 1, block: -1])
+[ 4] a@0<Arg>  [ 3] b@1<Arg>
+[ 2] args@2<Rest>  [ 1] c@3<Post>
+```
+
+<div class="text-sm mt-2">
+
+- `rest: 2` → `args@2` が可変長引数（`*args`）
+- `post: 1` → rest の後の必須引数が1つ（`c`）
+- `<Rest>`, `<Post>` タグで種別が分かる
+
+</div>
+
+</div>
+</div>
+
+---
+
+# ローカルテーブル例④ オプション引数
+
+```ruby
+def add_two_optional(a, b = 5)
+  sum = a + b
+end
+```
+
+<div class="grid grid-cols-2 gap-4 mt-2">
+<div>
+
+#### YARV 命令列
+
+```txt
+== disasm: #<ISeq:add_two_optional@<compiled>:1>
+0000 putobject              5
+0002 setlocal_WC_0          b@1
+0004 getlocal_WC_0          a@0       [LiCa]
+0006 getlocal_WC_0          b@1
+0008 opt_plus
+0010 dup
+0011 setlocal_WC_0          sum@2
+0013 leave
+```
+
+</div>
+<div>
+
+#### ローカルテーブル
+
+```txt
+local table (size: 3, argc: 1
+ [opts: 1, rest: -1, post: 0, block: -1])
+[ 3] a@0<Arg>  [ 2] b@1<Opt=0>  [ 1] sum@2
+```
+
+<div class="text-sm mt-2">
+
+- `argc: 1` → 必須引数は `a` のみ
+- `opts: 1` → オプション引数1つ
+- `<Opt=0>` → デフォルト値の命令オフセット（`0000 putobject 5`）
+
+</div>
+
+</div>
+</div>
+
+---
+
+# ローカルテーブル例⑤ キーワード引数
+
+```ruby
+def add_two_keyword(a, b: 5)
+  sum = a + b
+end
+```
+
+<div class="grid grid-cols-2 gap-4 mt-2">
+<div>
+
+#### YARV 命令列
+
+```txt
+== disasm: #<ISeq:add_two_keyword@<compiled>:1>
+0000 getlocal_WC_0          a@0       [LiCa]
+0002 getlocal_WC_0          b@1
+0004 opt_plus
+0006 dup
+0007 setlocal_WC_0          sum@3
+0009 leave
+```
+
+</div>
+<div>
+
+#### ローカルテーブル
+
+```txt
+local table (size: 4, argc: 1
+ [opts: 0, rest: -1, post: 0, block: -1, kw: 1@0])
+[ 4] a@0<Arg>  [ 3] b@1  [ 2] ?@2  [ 1] sum@3
+```
+
+<div class="text-sm mt-2">
+
+- `kw: 1@0` → キーワード引数1つ
+- `?@2` → キーワード処理用の隠し変数
+- `size: 4` → 見える変数3つ + 隠し変数1つ
+
+</div>
+
+</div>
+</div>
+
+---
+
 # ローカルテーブルのフィールド
 
 ローカルテーブルヘッダーの各フィールドの意味
