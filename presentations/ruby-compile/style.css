@@ -4,9 +4,28 @@
   margin-bottom: 0.25rem !important;
 }
 
-/* スライドのコンテンツがはみ出た場合にスクロール可能にする */
+/* 全スライド白背景・黒文字 + はみ出しスクロール */
 .slidev-layout {
+  background: #ffffff !important;
+  color: #1a1a1a !important;
   overflow-y: auto !important;
+}
+
+.slidev-layout h1,
+.slidev-layout h2,
+.slidev-layout h3,
+.slidev-layout h4 {
+  color: #1a1a1a !important;
+}
+
+/* テーマの h1+p opacity-50 を無効化（灰色テキスト回避） */
+.slidev-layout h1 + p {
+  opacity: 1 !important;
+}
+
+/* リンク色（白背景で視認しやすい青） */
+.slidev-layout a {
+  color: #2563eb !important;
 }
 
 /* AST ノード種別の色分け */
@@ -16,3 +35,33 @@
 .node-iter  { color: #e67e22; font-weight: bold; }  /* NODE_ITER: オレンジ */
 .node-scope { color: #8e44ad; font-weight: bold; }  /* NODE_SCOPE: パープル */
 .node-dvar  { color: #16a085; font-weight: bold; }  /* NODE_DVAR: ティール */
+
+/* コードブロック: Shiki のシンタックスハイライト色を復元 */
+.slidev-layout .shiki,
+.slidev-layout .shiki span {
+  color: var(--shiki-dark, #fff) !important;
+}
+
+/* mermaid: 矢印とラベルの色を黒に（灰色回避） */
+.mermaid .flowchart-link {
+  stroke: #1a1a1a !important;
+}
+.mermaid .marker {
+  fill: #1a1a1a !important;
+  stroke: #1a1a1a !important;
+}
+.mermaid .edgeLabel {
+  color: #1a1a1a !important;
+  background: transparent !important;
+}
+.mermaid .nodeLabel {
+  color: #1a1a1a !important;
+}
+
+/* インラインコード: 白背景で読みやすいスタイル */
+.slidev-layout :not(pre) > code {
+  color: #1a1a1a !important;
+  background: #dbeafe !important;
+  padding: 0.1em 0.3em;
+  border-radius: 0.25em;
+}

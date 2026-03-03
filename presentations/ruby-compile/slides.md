@@ -1,6 +1,5 @@
 ---
 theme: seriph
-background: https://cover.sli.dev
 title: Rubyのコンパイル — AST から YARV命令へ
 info: |
   ## Rubyのコンパイル
@@ -83,7 +82,7 @@ flowchart LR
 - AST → **YARV 命令列**（中間表現）にコンパイル
 - スタックベースのVM で実行
 - Ruby 1.8 より高速
-  - 理由は[rubykaigi-bootcamp-2025](https://github.com/Nozomi-Hijikata/slides/blob/top/rubykaigi-bootcamp-2025/pages/ruby-process.md#layout-default-24)）を参照
+  - 理由は[rubykaigi-bootcamp-2025](https://github.com/Nozomi-Hijikata/slides/blob/main/rubykaigi-bootcamp-2025/pages/ruby-process.md#layout-default-24) を参照
 
 
 </div>
